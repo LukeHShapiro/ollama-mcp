@@ -41,7 +41,7 @@ rl.on("close", () => {
   // Auto-launch aider in a new Windows Terminal window
   spawn(
     "wt",
-    ["bash", "-c", `cd '${cwd}' && bash /c/Users/scout/ollama-mcp/resume.sh '${cwd}'`],
+    ["bash", "-c", `cd '${cwd}' && export PATH=$HOME/.local/bin:$PATH && export OLLAMA_API_BASE=http://localhost:11434 && bash /c/Users/scout/ollama-mcp/resume.sh '${cwd}'`],
     { detached: true, stdio: "ignore" }
   ).unref();
 
