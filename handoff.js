@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import readline from "readline";
+import { spawn } from "child_process";
 
 const rl = readline.createInterface({ input: process.stdin });
 let raw = "";
@@ -36,7 +37,15 @@ rl.on("close", () => {
   ].join("\n");
 
   fs.writeFileSync(file, content, "utf8");
+
+  // Auto-launch aider in a new Windows Terminal window
+  spawn(
+    "wt",
+    ["bash", "-c", `cd '${cwd}' && bash /c/Users/scout/ollama-mcp/resume.sh '${cwd}'`],
+    { detached: true, stdio: "ignore" }
+  ).unref();
+
   process.stdout.write(JSON.stringify({
-    systemMessage: `Handoff file written: ${file}`,
+    systemMessage: `Handoff file written: ${file} — launching qwen in new terminal`,
   }));
 });
