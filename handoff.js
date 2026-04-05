@@ -43,8 +43,8 @@ rl.on("close", async () => {
   }
 
   // Open browser to the UI (it auto-loads the handoff on page open)
-  spawn("powershell", ["-Command", `Start-Process "http://localhost:${UI_PORT}"`], {
-    detached: true, stdio: "ignore",
+  spawn("cmd", ["/c", "start", `http://localhost:${UI_PORT}`], {
+    detached: true, stdio: "ignore", shell: false,
   }).unref();
 
   process.stdout.write(JSON.stringify({
