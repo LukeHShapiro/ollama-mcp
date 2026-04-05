@@ -1,12 +1,16 @@
 import fs from "fs";
 import path from "path";
+import http from "http";
 import readline from "readline";
 import { spawn } from "child_process";
+
+const UI_PORT = 4000;
+const UI_SERVER = "C:/Users/scout/ollama-mcp/ui-server.js";
 
 const rl = readline.createInterface({ input: process.stdin });
 let raw = "";
 rl.on("line", (line) => (raw += line));
-rl.on("close", () => {
+rl.on("close", async () => {
   let summary = "(no summary available)";
   try {
     const data = JSON.parse(raw);
@@ -23,29 +27,39 @@ rl.on("close", () => {
     "",
     "=== CONTEXT SUMMARY ===",
     summary,
-    "",
-    "=== TO CONTINUE WITH QWEN ===",
-    "1. Open terminal in this project directory",
-    "2. Run: aider",
-    "   (config auto-loads qwen3-coder from .aider.conf.yml)",
-    "",
-    "3. Inside aider, add relevant files:",
-    "   /add <files mentioned in summary above>",
-    "",
-    "4. Paste this to qwen to resume:",
-    `   "I'm continuing work from a Claude Code session. Here's where we left off:\n\n${summary}"`,
   ].join("\n");
 
   fs.writeFileSync(file, content, "utf8");
 
-  // Auto-launch aider in a new Windows Terminal window
-  spawn(
-    "powershell",
-    ["-Command", `Start-Process wt -ArgumentList 'bash -c \\"export PATH=$HOME/.local/bin:$PATH && export OLLAMA_API_BASE=http://localhost:11434 && cd \\'${cwd}\\' && bash /c/Users/scout/ollama-mcp/resume.sh\\"'`],
-    { detached: true, stdio: "ignore" }
-  ).unref();
+  // Ensure UI server is running, start it if not
+  const serverRunning = await checkPort(UI_PORT);
+  if (!serverRunning) {
+    spawn("node", [UI_SERVER], {
+      detached: true,
+      stdio: "ignore",
+      env: { ...process.env, PROJECT_DIR: cwd },
+    }).unref();
+    await wait(1500); // give it time to start
+  }
+
+  // Open browser to the UI (it auto-loads the handoff on page open)
+  spawn("powershell", ["-Command", `Start-Process "http://localhost:${UI_PORT}"`], {
+    detached: true, stdio: "ignore",
+  }).unref();
 
   process.stdout.write(JSON.stringify({
-    systemMessage: `Handoff file written: ${file} — launching qwen in new terminal`,
+    systemMessage: `Handoff written → opening http://localhost:${UI_PORT}`,
   }));
 });
+
+function checkPort(port) {
+  return new Promise((resolve) => {
+    const req = http.get(`http://localhost:${port}`, () => { req.destroy(); resolve(true); });
+    req.on("error", () => resolve(false));
+    req.setTimeout(500, () => { req.destroy(); resolve(false); });
+  });
+}
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
