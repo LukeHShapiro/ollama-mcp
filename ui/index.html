@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qwen</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d0d0d; color: #e8e8e8; font-family: 'Segoe UI', system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; }
+
+  #header { padding: 8px 14px; border-bottom: 1px solid #1e1e1e; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  #header h1 { font-size: 14px; font-weight: 600; color: #fff; }
+  #model-select { background: #1a1a1a; border: 1px solid #2a2a2a; color: #aaa; font-size: 12px; padding: 3px 7px; border-radius: 5px; cursor: pointer; }
+  #project-label { margin-left: auto; font-size: 11px; color: #444; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; }
+
+  /* Tabs */
+  #tab-bar { display: flex; align-items: center; border-bottom: 1px solid #1a1a1a; background: #080808; flex-shrink: 0; overflow-x: auto; min-height: 34px; }
+  #tab-bar::-webkit-scrollbar { height: 3px; }
+  .tab { display: flex; align-items: center; gap: 6px; padding: 0 12px; height: 34px; font-size: 12px; color: #555; cursor: pointer; border-right: 1px solid #151515; white-space: nowrap; flex-shrink: 0; user-select: none; }
+  .tab:hover { color: #999; background: #111; }
+  .tab.active { color: #e8e8e8; background: #0d0d0d; border-bottom: 2px solid #3a6ea8; }
+  .tab .tab-name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+  .tab .tab-name[contenteditable] { outline: none; border-bottom: 1px solid #3a6ea8; }
+  .tab .close { color: #333; font-size: 14px; line-height: 1; padding: 0 2px; border-radius: 3px; }
+  .tab .close:hover { color: #888; background: #1a1a1a; }
+  #new-tab { padding: 0 14px; height: 34px; font-size: 18px; color: #333; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; }
+  #new-tab:hover { color: #666; }
+
+  #layout { display: flex; flex: 1; overflow: hidden; }
+
+  /* Sidebar */
+  #sidebar { width: 210px; border-right: 1px solid #1a1a1a; display: flex; flex-direction: column; flex-shrink: 0; }
+  #sidebar-header { padding: 7px 12px; font-size: 10px; color: #444; border-bottom: 1px solid #1a1a1a; letter-spacing: 0.08em; }
+  #file-tree { flex: 1; overflow-y: auto; padding: 4px 0; font-size: 12px; font-family: 'Cascadia Code', monospace; }
+  .tree-item { padding: 2px 12px; cursor: pointer; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tree-item:hover { background: #141414; color: #bbb; }
+  .tree-item.dir { color: #444; cursor: default; }
+  .tree-item.dir:hover { background: transparent; }
+  .tree-item.active-file { color: #7ab4f5; background: #0e1e30; }
+  #file-content { border-top: 1px solid #1a1a1a; max-height: 200px; overflow: auto; display: none; }
+  #file-content-header { padding: 5px 10px; font-size: 10px; color: #444; display: flex; justify-content: space-between; }
+  #file-content-header button { background: none; border: none; color: #3a6ea8; font-size: 10px; cursor: pointer; }
+  #file-content pre { font-size: 11px; padding: 8px 12px; color: #777; font-family: 'Cascadia Code', monospace; white-space: pre-wrap; }
+
+  /* Chat */
+  #chat { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  #messages { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .msg { max-width: 85%; line-height: 1.6; font-size: 13px; white-space: pre-wrap; word-break: break-word; }
+  .msg.user { align-self: flex-end; background: #1a3a5c; padding: 8px 13px; border-radius: 14px 14px 4px 14px; }
+  .msg.assistant { align-self: flex-start; background: #141414; padding: 8px 13px; border-radius: 14px 14px 14px 4px; border: 1px solid #222; }
+  .msg.system-note { align-self: center; color: #383838; font-size: 11px; font-style: italic; }
+  .thinking { color: #383838; font-style: italic; }
+  code { background: #0a0a0a; padding: 1px 4px; border-radius: 3px; font-family: 'Cascadia Code', monospace; font-size: 12px; }
+  pre { background: #0a0a0a; border: 1px solid #1e1e1e; border-radius: 6px; padding: 10px; margin: 6px 0; overflow-x: auto; }
+  pre code { background: none; padding: 0; }
+
+  #footer { padding: 10px 14px; border-top: 1px solid #1e1e1e; display: flex; gap: 8px; flex-shrink: 0; }
+  #input { flex: 1; background: #141414; border: 1px solid #222; color: #e8e8e8; font-size: 13px; padding: 8px 12px; border-radius: 9px; resize: none; outline: none; font-family: inherit; min-height: 38px; max-height: 130px; }
+  #input:focus { border-color: #2a4a6a; }
+  #send { background: #1a3a5c; border: none; color: #7ab4f5; font-size: 17px; width: 38px; height: 38px; border-radius: 9px; cursor: pointer; flex-shrink: 0; }
+  #send:hover { background: #1e4a7a; }
+  #send:disabled { opacity: 0.35; cursor: not-allowed; }
+  #clear { background: #141414; border: 1px solid #222; color: #444; font-size: 11px; padding: 0 10px; height: 38px; border-radius: 9px; cursor: pointer; flex-shrink: 0; }
+  #clear:hover { color: #888; }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #1e1e1e; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>Qwen</h1>
+  <select id="model-select">
+    <option value="qwen3-coder">qwen3-coder</option>
+    <option value="qwen3-coder:30b">qwen3-coder:30b</option>
+  </select>
+  <span id="project-label">loading…</span>
+</div>
+
+<div id="tab-bar">
+  <!-- tabs injected here -->
+  <div id="new-tab" title="New tab">+</div>
+</div>
+
+<div id="layout">
+  <div id="sidebar">
+    <div id="sidebar-header">FILES</div>
+    <div id="file-tree"></div>
+    <div id="file-content">
+      <div id="file-content-header">
+        <span id="open-file-name"></span>
+        <button id="inject-file-btn">+ inject into chat</button>
+      </div>
+      <pre id="file-content-pre"></pre>
+    </div>
+  </div>
+
+  <div id="chat">
+    <div id="messages"></div>
+    <div id="footer">
+      <textarea id="input" placeholder="Message qwen..." rows="1"></textarea>
+      <button id="clear">Clear</button>
+      <button id="send">↑</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const messagesEl = document.getElementById('messages');
+const inputEl = document.getElementById('input');
+const sendBtn = document.getElementById('send');
+const clearBtn = document.getElementById('clear');
+const modelSelect = document.getElementById('model-select');
+const fileTreeEl = document.getElementById('file-tree');
+const fileContentEl = document.getElementById('file-content');
+const fileContentPre = document.getElementById('file-content-pre');
+const openFileNameEl = document.getElementById('open-file-name');
+const injectFileBtn = document.getElementById('inject-file-btn');
+const projectLabel = document.getElementById('project-label');
+const tabBar = document.getElementById('tab-bar');
+const newTabBtn = document.getElementById('new-tab');
+
+let systemPrompt = '';
+let tabCounter = 0;
+let activeTabId = null;
+let openFileContent = null;
+let openFilePath = null;
+
+// Tab state: { id, name, history, scrollTop }
+const tabs = {};
+
+function createTab(name, history = []) {
+  const id = ++tabCounter;
+  tabs[id] = { id, name: name || `Chat ${id}`, history, scrollTop: 0 };
+
+  const el = document.createElement('div');
+  el.className = 'tab';
+  el.dataset.id = id;
+  el.innerHTML = `<span class="tab-name">${tabs[id].name}</span><span class="close">×</span>`;
+
+  // Double-click to rename
+  el.querySelector('.tab-name').addEventListener('dblclick', e => {
+    const span = e.target;
+    span.contentEditable = true;
+    span.focus();
+    document.execCommand('selectAll', false, null);
+    span.addEventListener('blur', () => {
+      span.contentEditable = false;
+      tabs[id].name = span.textContent.trim() || tabs[id].name;
+      span.textContent = tabs[id].name;
+    }, { once: true });
+    span.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); span.blur(); } });
+  });
+
+  el.querySelector('.close').addEventListener('click', e => {
+    e.stopPropagation();
+    closeTab(id);
+  });
+
+  el.addEventListener('click', e => {
+    if (e.target.classList.contains('close')) return;
+    switchTab(id);
+  });
+
+  tabBar.insertBefore(el, newTabBtn);
+  return id;
+}
+
+function switchTab(id) {
+  if (activeTabId !== null && tabs[activeTabId]) {
+    tabs[activeTabId].scrollTop = messagesEl.scrollTop;
+    tabs[activeTabId].renderedHTML = messagesEl.innerHTML;
+  }
+
+  activeTabId = id;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', +t.dataset.id === id));
+
+  messagesEl.innerHTML = tabs[id].renderedHTML || '';
+  messagesEl.scrollTop = tabs[id].scrollTop || 0;
+}
+
+function closeTab(id) {
+  const ids = Object.keys(tabs).map(Number);
+  if (ids.length === 1) return; // keep at least one
+  const idx = ids.indexOf(id);
+  delete tabs[id];
+  document.querySelector(`.tab[data-id="${id}"]`).remove();
+  if (activeTabId === id) {
+    const next = ids[idx + 1] ?? ids[idx - 1];
+    if (next) switchTab(next);
+  }
+}
+
+function currentHistory() { return tabs[activeTabId]?.history ?? []; }
+
+function addMessage(role, content) {
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  div.textContent = content;
+  messagesEl.appendChild(div);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  return div;
+}
+
+function addNote(text) {
+  const div = document.createElement('div');
+  div.className = 'msg system-note';
+  div.textContent = text;
+  messagesEl.appendChild(div);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+async function streamChat(messages, targetEl) {
+  const res = await fetch('http://localhost:11434/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: modelSelect.value, messages, stream: true }),
+  });
+  let reply = '';
+  targetEl.textContent = '';
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    for (const line of decoder.decode(value).split('\n').filter(Boolean)) {
+      try {
+        const chunk = JSON.parse(line);
+        if (chunk.message?.content) {
+          reply += chunk.message.content;
+          targetEl.textContent = reply;
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+      } catch {}
+    }
+  }
+  return reply;
+}
+
+async function send() {
+  const text = inputEl.value.trim();
+  if (!text) return;
+  inputEl.value = '';
+  inputEl.style.height = 'auto';
+  sendBtn.disabled = true;
+
+  const history = currentHistory();
+  history.push({ role: 'user', content: text });
+  addMessage('user', text);
+  const replyEl = addMessage('assistant', '');
+  replyEl.innerHTML = '<span class="thinking">thinking…</span>';
+
+  try {
+    const msgs = systemPrompt ? [{ role: 'system', content: systemPrompt }, ...history] : history;
+    const reply = await streamChat(msgs, replyEl);
+    history.push({ role: 'assistant', content: reply });
+    // Auto-name tab from first message
+    if (history.length === 2) {
+      const name = text.slice(0, 28) + (text.length > 28 ? '…' : '');
+      tabs[activeTabId].name = name;
+      document.querySelector(`.tab[data-id="${activeTabId}"] .tab-name`).textContent = name;
+    }
+  } catch (e) {
+    replyEl.textContent = 'Error: ' + e.message;
+  }
+
+  sendBtn.disabled = false;
+  inputEl.focus();
+}
+
+async function loadFile(relPath) {
+  try {
+    const { content, error } = await fetch(`/api/file?path=${encodeURIComponent(relPath)}`).then(r => r.json());
+    openFilePath = relPath;
+    openFileContent = content ?? null;
+    openFileNameEl.textContent = relPath;
+    fileContentPre.textContent = error ?? content;
+    fileContentEl.style.display = 'block';
+    document.querySelectorAll('.tree-item').forEach(el => el.classList.toggle('active-file', el.dataset.path === relPath));
+  } catch {}
+}
+
+injectFileBtn.addEventListener('click', () => {
+  if (!openFilePath || !openFileContent) return;
+  const snippet = `File: ${openFilePath}\n\`\`\`\n${openFileContent.slice(0, 4000)}\n\`\`\``;
+  currentHistory().push({ role: 'user', content: snippet });
+  addNote(`📄 Injected: ${openFilePath}`);
+});
+
+async function init() {
+  // Load project context
+  try {
+    const ctx = await fetch('/api/context').then(r => r.json());
+    systemPrompt = ctx.systemPrompt;
+    projectLabel.textContent = ctx.projectDir;
+    ctx.tree.split('\n').filter(Boolean).forEach(line => {
+      const isDir = line.trimEnd().endsWith('/');
+      const div = document.createElement('div');
+      div.className = `tree-item${isDir ? ' dir' : ''}`;
+      div.textContent = line;
+      div.title = line.trim();
+      div.dataset.path = line.trim();
+      if (!isDir) div.addEventListener('click', () => loadFile(line.trim()));
+      fileTreeEl.appendChild(div);
+    });
+  } catch { projectLabel.textContent = 'project unavailable'; }
+
+  // Create initial tab and load handoff into it
+  const firstId = createTab('Chat 1');
+  switchTab(firstId);
+
+  try {
+    const { content } = await fetch('/api/handoff').then(r => r.json());
+    if (content) {
+      sendBtn.disabled = true;
+      tabs[firstId].name = '📋 Resumed';
+      document.querySelector(`.tab[data-id="${firstId}"] .tab-name`).textContent = '📋 Resumed';
+      addNote('📋 Resuming from handoff file…');
+      const history = currentHistory();
+      history.push({ role: 'user', content });
+      const replyEl = addMessage('assistant', '');
+      replyEl.innerHTML = '<span class="thinking">picking up where we left off…</span>';
+      const msgs = [{ role: 'system', content: systemPrompt }, { role: 'user', content }];
+      const reply = await streamChat(msgs, replyEl);
+      history.push({ role: 'assistant', content: reply });
+      sendBtn.disabled = false;
+    }
+  } catch {}
+}
+
+newTabBtn.addEventListener('click', () => {
+  const id = createTab();
+  switchTab(id);
+});
+
+sendBtn.addEventListener('click', send);
+clearBtn.addEventListener('click', () => {
+  if (tabs[activeTabId]) tabs[activeTabId].history = [];
+  messagesEl.innerHTML = '';
+});
+inputEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+});
+inputEl.addEventListener('input', () => {
+  inputEl.style.height = 'auto';
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 130) + 'px';
+});
+
+init();
+</script>
+</body>
+</html>
