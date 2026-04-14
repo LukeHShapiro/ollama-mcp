@@ -34,7 +34,9 @@ function buildTree(dir, depth = 0, maxDepth = 4) {
 
 function readFile(relPath) {
   const abs = path.resolve(PROJECT_DIR, relPath);
-  if (!abs.startsWith(PROJECT_DIR)) return { error: "Access denied" };
+  const normalAbs = abs.replace(/\\/g, "/");
+  const normalDir = PROJECT_DIR.replace(/\\/g, "/");
+  if (!normalAbs.startsWith(normalDir)) return { error: "Access denied" };
   try {
     const stat = fs.statSync(abs);
     if (stat.size > MAX_FILE_SIZE) return { error: "File too large (>100KB)" };
@@ -46,7 +48,9 @@ function readFile(relPath) {
 
 function writeFile(relPath, content) {
   const abs = path.resolve(PROJECT_DIR, relPath);
-  if (!abs.startsWith(PROJECT_DIR)) return { error: "Access denied" };
+  const normalAbs = abs.replace(/\\/g, "/");
+  const normalDir = PROJECT_DIR.replace(/\\/g, "/");
+  if (!normalAbs.startsWith(normalDir)) return { error: "Access denied" };
   try {
     fs.mkdirSync(path.dirname(abs), { recursive: true });
     fs.writeFileSync(abs, content, "utf8");
