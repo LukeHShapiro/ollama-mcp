@@ -4,5 +4,8 @@
   "version": "1.0.0",
   "dependencies": {
     "@modelcontextprotocol/sdk": "latest"
+  },
+  "devDependencies": {
+    "serve": "^14.2.6"
   }
 }
